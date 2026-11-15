@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Pad-9 drum pad</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--page:#e4e6ea;--acc:#ff5a3c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#121318}}
+:root[data-theme="dark"]{--page:#121318}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100%;background:var(--page);display:grid;place-items:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.dev{width:min(94vw,430px);margin:16px 0;padding:18px;border-radius:26px;background:linear-gradient(#d3d6db,#bcc0c6);box-shadow:0 1px 0 #f4f5f7 inset,0 -4px 0 #9a9ea6 inset,0 24px 50px rgba(0,0,0,.35)}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.arrow{flex:none;width:52px;height:52px;border:0;border-radius:14px;background:linear-gradient(#34363c,#26282d);box-shadow:0 -3px 0 #1a1b1f inset,0 2px 0 #9ea2a9;display:grid;place-items:center;cursor:pointer;touch-action:manipulation}
+.arrow:active{transform:translateY(2px);box-shadow:0 2px 6px #000 inset}
+.arrow:focus-visible,.pad:focus-visible,#vol:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.arrow svg{width:18px;height:18px;fill:#d7dae0}
+.lcd{flex:1;border-radius:10px;padding:10px 14px 9px;background:#b8c6a2;box-shadow:0 3px 8px rgba(0,0,0,.4) inset,0 0 0 4px #2a2c31;color:#222b1b;text-align:center}
+#num{font-family:"Press Start 2P",ui-monospace,monospace;font-size:34px;line-height:1.1}
+#kname{margin-top:6px;font-size:12px;font-weight:600;letter-spacing:.04em;opacity:.8}
+.pads{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,3vw,14px)}
+.pad{aspect-ratio:1;border-radius:16px;padding:9px 10px;position:relative;display:flex;align-items:flex-end;font-size:13px;font-weight:600;color:#b4b8c0;background:linear-gradient(#3a3c43,#26282d);box-shadow:0 -4px 0 #17181c inset,0 2px 0 #9ea2a9;cursor:pointer;touch-action:none;transition:box-shadow .06s}
+.pad.on{background:var(--acc);color:#16171a;transform:translateY(2px);box-shadow:0 3px 8px rgba(0,0,0,.35) inset,0 0 26px var(--acc)}
+.pad i{position:absolute;top:8px;right:10px;font:600 11px ui-monospace,monospace;font-style:normal;opacity:.55}
+@media (hover:none){.pad i{display:none}}
+.bot{display:flex;align-items:center;justify-content:space-between;margin-top:20px;color:#3b3e45;font-size:13px;font-weight:600}
+.vol{display:flex;align-items:center;gap:10px}
+#vol{width:130px;accent-color:var(--acc);touch-action:pan-x}
+@media (prefers-reduced-motion:reduce){.pad{transition:none}}
+</style>
+</head>
+<body>
+<main class="dev" id="dev">
+  <div class="top">
+    <button class="arrow" id="prev" aria-label="Previous kit"><svg viewBox="0 0 20 20"><path d="M15 2v16L3 10z"/></svg></button>
+    <div class="lcd" aria-live="polite"><div id="num">01</div><div id="kname">8-bit kit</div></div>
+    <button class="arrow" id="next" aria-label="Next kit"><svg viewBox="0 0 20 20"><path d="M5 2v16l12-8z"/></svg></button>
+  </div>
+  <div class="pads" id="pads"></div>
+  <div class="bot">
+    <label class="vol">Volume <input id="vol" type="range" min="0" max="100" value="80"></label>
+    <span>Pad-9</span>
+  </div>
+</main>
+<script>
+let ctx,master,white,crunch,kit=0;
+const voices={},MIN_HOLD=0.08;
+
+function ensure(){
+  if(!ctx){
+    ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const comp=ctx.createDynamicsCompressor();
+    master=ctx.createGain();master.connect(comp);comp.connect(ctx.destination);setVol();
+    const n=ctx.sampleRate;white=ctx.createBuffer(1,n,n);crunch=ctx.createBuffer(1,n,n);
+    const w=white.getChannelData(0),c=crunch.getChannelData(0);let h=0;
+    for(let i=0;i<n;i++){w[i]=Math.random()*2-1;if(i%6===0)h=Math.floor(Math.random()*4)/1.5-1;c[i]=h}
+  }
+  if(ctx.state!=='running')ctx.resume();
+}
+function setVol(){if(master)master.gain.value=Math.pow($('#vol').value/100,1.5)*0.9}
+
+/* sound building blocks */
+function T(o,s,ty,f0,f1,sw,pk,dec,d=0){
+  const t=ctx.currentTime+d,os=ctx.createOscillator(),g=ctx.createGain();
+  os.type=ty;os.frequency.setValueAtTime(f0,t);
+  if(f1!==f0)os.frequency.exponentialRampToValueAtTime(f1,t+sw);
+  g.gain.setValueAtTime(pk,t);g.gain.exponentialRampToValueAtTime(0.001,t+dec);
+  os.connect(g);g.connect(o);os.start(t);os.stop(t+dec+0.05);s.push(os);
+}
+function N(o,s,ft,f,q,pk,dec,c=0,d=0){
+  const t=ctx.currentTime+d,n=ctx.createBufferSource(),fl=ctx.createBiquadFilter(),g=ctx.createGain();
+  n.buffer=c?crunch:white;n.loop=true;fl.type=ft;fl.frequency.value=f;fl.Q.value=q;
+  g.gain.setValueAtTime(pk,t);g.gain.exponentialRampToValueAtTime(0.001,t+dec);
+  n.connect(fl);fl.connect(g);g.connect(o);n.start(t);n.stop(t+dec+0.05);s.push(n);
+}
+const M=(o,s,pk,dec)=>[3042,4106,5224,5400,6360,8000].forEach(f=>T(o,s,'square',f,f,.1,pk,dec));
+const claps=(o,s,f,q,pk,gap,tail,c)=>[0,1,2,3].forEach(i=>N(o,s,'bandpass',f,q,pk,i<3?.03:tail,c,i*gap));
+
+/* the three kits */
+const KITS=[
+{name:'8-bit kit',acc:'#ff5a3c',k:{
+  kick:(o,s)=>{T(o,s,'square',160,45,.1,.7,.22);T(o,s,'triangle',90,40,.1,.6,.25)},
+  snare:(o,s)=>{N(o,s,'highpass',900,1,.45,.16,1);T(o,s,'square',250,180,.08,.25,.1)},
+  clap:(o,s)=>claps(o,s,1500,.8,.4,.02,.15,1),
+  hhc:(o,s)=>N(o,s,'highpass',7000,1,.3,.05,1),
+  hho:(o,s)=>N(o,s,'highpass',7000,1,.3,.35,1),
+  tom1:(o,s)=>T(o,s,'square',260,150,.15,.45,.3),
+  tom2:(o,s)=>T(o,s,'square',180,100,.15,.45,.35),
+  crash:(o,s)=>N(o,s,'highpass',3500,1,.35,1.2,1),
+  ride:(o,s)=>{N(o,s,'bandpass',8000,2,.25,.7,1);T(o,s,'triangle',5200,5200,.1,.1,.6)}}},
+{name:'Standard kit',acc:'#f2b035',k:{
+  kick:(o,s)=>{T(o,s,'sine',120,45,.08,1,.35);N(o,s,'bandpass',3000,1,.3,.012)},
+  snare:(o,s)=>{T(o,s,'triangle',200,170,.05,.4,.12);N(o,s,'highpass',1500,1,.6,.2)},
+  clap:(o,s)=>claps(o,s,1800,1,.5,.012,.2,0),
+  hhc:(o,s)=>N(o,s,'highpass',7500,1,.35,.06),
+  hho:(o,s)=>N(o,s,'highpass',7500,1,.3,.4),
+  tom1:(o,s)=>{T(o,s,'sine',220,120,.12,.8,.4);N(o,s,'bandpass',800,1,.1,.03)},
+  tom2:(o,s)=>{T(o,s,'sine',150,85,.12,.8,.45);N(o,s,'bandpass',600,1,.1,.03)},
+  crash:(o,s)=>{N(o,s,'highpass',4000,1,.4,1.6);N(o,s,'bandpass',6000,1,.15,1.8)},
+  ride:(o,s)=>{N(o,s,'bandpass',9000,1.5,.25,1);[3100,4700,6300].forEach(f=>T(o,s,'sine',f,f,.1,.06,.8))}}},
+{name:'Electro / house kit',acc:'#2ec4d6',k:{
+  kick:(o,s)=>{T(o,s,'sine',180,45,.06,1,.45);T(o,s,'sine',50,50,.1,.5,.5)},
+  snare:(o,s)=>{T(o,s,'triangle',190,160,.05,.35,.1);N(o,s,'highpass',2500,1,.6,.18)},
+  clap:(o,s)=>claps(o,s,1200,1.5,.6,.011,.25,0),
+  hhc:(o,s)=>{M(o,s,.035,.04);N(o,s,'highpass',9000,1,.15,.04)},
+  hho:(o,s)=>{M(o,s,.035,.35);N(o,s,'highpass',9000,1,.15,.35)},
+  tom1:(o,s)=>T(o,s,'sine',260,140,.15,.8,.4),
+  tom2:(o,s)=>T(o,s,'sine',190,100,.15,.8,.45),
+  crash:(o,s)=>{M(o,s,.04,1.4);N(o,s,'highpass',5000,1,.3,1.4)},
+  ride:(o,s)=>{M(o,s,.03,.9);N(o,s,'bandpass',10000,1,.12,.9)}}}
+];
+
+/* voices: sound plays while held, cuts off the moment the pad is released */
+function stopVoice(v){
+  if(v.dead)return;v.dead=true;
+  const t=ctx.currentTime;
+  v.o.gain.cancelScheduledValues(t);v.o.gain.setValueAtTime(1,t);v.o.gain.linearRampToValueAtTime(0,t+0.012);
+  v.s.forEach(x=>{try{x.stop(t+0.02)}catch(e){}});
+}
+function trigger(id){
+  ensure();
+  if(voices[id])return;
+  if(id==='hhc'&&voices.hho){stopVoice(voices.hho);delete voices.hho}
+  const o=ctx.createGain(),s=[];o.connect(master);
+  KITS[kit].k[id](o,s);
+  voices[id]={o,s,t0:ctx.currentTime};
+}
+function release(id){
+  const v=voices[id];if(!v)return;delete voices[id];
+  const wait=Math.max(0,MIN_HOLD-(ctx.currentTime-v.t0));
+  setTimeout(()=>stopVoice(v),wait*1000);
+}
+
+/* pads */
+const PADS=[['crash','Crash','Q'],['ride','Ride','W'],['clap','Clap','E'],
+            ['tom1','Tom 1','A'],['tom2','Tom 2','S'],['hho','Hi-hat open','D'],
+            ['kick','Kick','Z'],['snare','Snare','X'],['hhc','Hi-hat closed','C']];
+const els={},keys={};
+PADS.forEach(([id,label,key])=>{
+  const el=document.createElement('div');
+  el.className='pad';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',label);
+  el.innerHTML=label+'<i>'+key+'</i>';
+  const down=()=>{el.classList.add('on');trigger(id)},up=()=>{el.classList.remove('on');release(id)};
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}down()});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,up));
+  el.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();down()}});
+  el.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')up()});
+  els[id]={el,down,up};keys[key.toLowerCase()]=id;
+  $('#pads').appendChild(el);
+});
+function $(s){return document.querySelector(s)}
+
+/* kit selector */
+function setKit(n){
+  PADS.forEach(([id])=>{release(id);els[id].el.classList.remove('on')});
+  Object.keys(voices).forEach(id=>{stopVoice(voices[id]);delete voices[id]});
+  kit=(n+KITS.length)%KITS.length;
+  $('#num').textContent=String(kit+1).padStart(2,'0');
+  $('#kname').textContent=KITS[kit].name;
+  document.documentElement.style.setProperty('--acc',KITS[kit].acc);
+}
+$('#prev').addEventListener('click',()=>setKit(kit-1));
+$('#next').addEventListener('click',()=>setKit(kit+1));
+$('#vol').addEventListener('input',setVol);
+
+/* computer keyboard */
+addEventListener('keydown',e=>{
+  if(e.repeat||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='ArrowLeft'&&document.activeElement.id!=='vol')return setKit(kit-1);
+  if(e.key==='ArrowRight'&&document.activeElement.id!=='vol')return setKit(kit+1);
+  const id=keys[e.key.toLowerCase()];if(id)els[id].down();
+});
+addEventListener('keyup',e=>{const id=keys[e.key.toLowerCase()];if(id)els[id].up()});
+function releaseAll(){PADS.forEach(([id])=>els[id].up())}
+addEventListener('blur',releaseAll);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll()});
+$('#dev').addEventListener('contextmenu',e=>e.preventDefault());
+</script>
+</body>
+</html>
