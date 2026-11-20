@@ -79,7 +79,7 @@ function N(o,s,ft,f,q,pk,dec,c=0,d=0){
 const M=(o,s,pk,dec)=>[3042,4106,5224,5400,6360,8000].forEach(f=>T(o,s,'square',f,f,.1,pk,dec));
 const claps=(o,s,f,q,pk,gap,tail,c)=>[0,1,2,3].forEach(i=>N(o,s,'bandpass',f,q,pk,i<3?.03:tail,c,i*gap));
 
-/* the three kits */
+/* kits */
 const KITS=[
 {name:'8-bit kit',acc:'#ff5a3c',k:{
   kick:(o,s)=>{T(o,s,'square',160,45,.1,.7,.22);T(o,s,'triangle',90,40,.1,.6,.25)},
@@ -110,7 +110,47 @@ const KITS=[
   tom1:(o,s)=>T(o,s,'sine',260,140,.15,.8,.4),
   tom2:(o,s)=>T(o,s,'sine',190,100,.15,.8,.45),
   crash:(o,s)=>{M(o,s,.04,1.4);N(o,s,'highpass',5000,1,.3,1.4)},
-  ride:(o,s)=>{M(o,s,.03,.9);N(o,s,'bandpass',10000,1,.12,.9)}}}
+  ride:(o,s)=>{M(o,s,.03,.9);N(o,s,'bandpass',10000,1,.12,.9)}}},
+{name:'Trap / 808 kit',acc:'#58d68d',k:{
+  kick:(o,s)=>{T(o,s,'sine',55,28,.18,1,.7);T(o,s,'sine',90,40,.1,.45,.35)},
+  snare:(o,s)=>{T(o,s,'triangle',220,180,.04,.45,.08);N(o,s,'highpass',2200,1,.7,.14);N(o,s,'bandpass',4000,1,.2,.08)},
+  clap:(o,s)=>claps(o,s,1600,2,.55,.01,.22,0),
+  hhc:(o,s)=>{N(o,s,'highpass',10000,1,.28,.035);T(o,s,'square',9000,9000,.02,.04,.03)},
+  hho:(o,s)=>{N(o,s,'highpass',9500,1,.28,.45);T(o,s,'square',8500,8500,.05,.05,.4)},
+  tom1:(o,s)=>{T(o,s,'sine',200,90,.2,.85,.55);N(o,s,'bandpass',500,1,.08,.04)},
+  tom2:(o,s)=>{T(o,s,'sine',130,55,.22,.9,.65);N(o,s,'bandpass',350,1,.08,.05)},
+  crash:(o,s)=>{N(o,s,'highpass',5000,1,.35,1.5);N(o,s,'bandpass',7500,1.2,.2,1.3)},
+  ride:(o,s)=>{N(o,s,'bandpass',11000,1.8,.22,.85);T(o,s,'triangle',6400,6400,.1,.08,.7)}}},
+{name:'Lo-fi kit',acc:'#e8a87c',k:{
+  kick:(o,s)=>{T(o,s,'sine',95,40,.12,.75,.4);N(o,s,'lowpass',200,1,.25,.08)},
+  snare:(o,s)=>{T(o,s,'triangle',170,140,.06,.3,.14);N(o,s,'bandpass',1200,.8,.45,.22);N(o,s,'lowpass',2800,1,.2,.18,1)},
+  clap:(o,s)=>claps(o,s,1100,.6,.35,.018,.28,1),
+  hhc:(o,s)=>N(o,s,'bandpass',5000,.8,.22,.07,1),
+  hho:(o,s)=>N(o,s,'bandpass',4800,.7,.2,.5,1),
+  tom1:(o,s)=>{T(o,s,'sine',190,110,.15,.55,.45);N(o,s,'lowpass',900,1,.12,.05)},
+  tom2:(o,s)=>{T(o,s,'sine',130,75,.15,.55,.5);N(o,s,'lowpass',700,1,.12,.06)},
+  crash:(o,s)=>{N(o,s,'bandpass',3200,.6,.3,1.4,1);N(o,s,'lowpass',4500,1,.2,1.2)},
+  ride:(o,s)=>{N(o,s,'bandpass',4200,1,.2,.9,1);T(o,s,'sine',2800,2800,.1,.05,.8)}}},
+{name:'Rock kit',acc:'#e74c6f',k:{
+  kick:(o,s)=>{T(o,s,'sine',110,40,.07,1,.38);T(o,s,'triangle',70,35,.08,.5,.3);N(o,s,'bandpass',2500,1,.35,.015)},
+  snare:(o,s)=>{T(o,s,'triangle',210,160,.04,.55,.1);N(o,s,'highpass',1800,1,.7,.18);N(o,s,'bandpass',3500,1,.25,.1)},
+  clap:(o,s)=>claps(o,s,2000,1.2,.45,.014,.18,0),
+  hhc:(o,s)=>N(o,s,'highpass',8500,1.2,.4,.05),
+  hho:(o,s)=>N(o,s,'highpass',8200,1,.35,.42),
+  tom1:(o,s)=>{T(o,s,'sine',240,130,.1,.9,.35);N(o,s,'bandpass',900,1,.15,.04)},
+  tom2:(o,s)=>{T(o,s,'sine',160,90,.1,.9,.4);N(o,s,'bandpass',700,1,.15,.04)},
+  crash:(o,s)=>{N(o,s,'highpass',4500,1,.45,1.8);N(o,s,'bandpass',7000,1.2,.2,2)},
+  ride:(o,s)=>{N(o,s,'bandpass',8500,1.5,.28,1.1);[2800,4200,5600].forEach(f=>T(o,s,'sine',f,f,.1,.07,.9))}}},
+{name:'Techno kit',acc:'#b8e63b',k:{
+  kick:(o,s)=>{T(o,s,'sine',150,42,.05,1,.5);T(o,s,'sine',60,55,.08,.55,.55);N(o,s,'bandpass',80,2,.2,.08)},
+  snare:(o,s)=>{T(o,s,'square',180,140,.04,.3,.08);N(o,s,'highpass',3000,1,.65,.16);N(o,s,'bandpass',5000,1.5,.2,.1)},
+  clap:(o,s)=>claps(o,s,1400,2.2,.65,.009,.2,0),
+  hhc:(o,s)=>{M(o,s,.04,.03);N(o,s,'highpass',11000,1,.2,.03)},
+  hho:(o,s)=>{M(o,s,.04,.4);N(o,s,'highpass',10500,1,.18,.4)},
+  tom1:(o,s)=>{T(o,s,'sine',280,150,.1,.85,.32);T(o,s,'triangle',280,150,.1,.3,.28)},
+  tom2:(o,s)=>{T(o,s,'sine',200,105,.1,.85,.36);T(o,s,'triangle',200,105,.1,.3,.32)},
+  crash:(o,s)=>{M(o,s,.05,1.2);N(o,s,'highpass',6000,1,.35,1.3);N(o,s,'bandpass',9000,1,.15,1.1)},
+  ride:(o,s)=>{M(o,s,.035,.8);N(o,s,'bandpass',12000,1.5,.15,.8);T(o,s,'triangle',7200,7200,.1,.06,.7)}}}
 ];
 
 /* voices: sound plays while held, cuts off the moment the pad is released */
